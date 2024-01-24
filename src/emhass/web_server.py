@@ -111,7 +111,6 @@ def build_params(params, options, addon):
         params['optim_conf'][2]['num_def_loads'] = options['number_of_deferrable_loads']
         params['optim_conf'][3]['P_deferrable_nom'] = [i['nominal_power_of_deferrable_loads'] for i in options['list_nominal_power_of_deferrable_loads']]
         params['optim_conf'][4]['def_total_hours'] = [i['operating_hours_of_each_deferrable_load'] for i in options['list_operating_hours_of_each_deferrable_load']]
-        params['optim_conf'][25]['def_end_timestep'] = [i['end_timesteps_of_each_deferrable_load'] for i in options['list_end_timesteps_of_each_deferrable_load']]
         params['optim_conf'][5]['treat_def_as_semi_cont'] = [i['treat_deferrable_load_as_semi_cont'] for i in options['list_treat_deferrable_load_as_semi_cont']]
         params['optim_conf'][6]['set_def_constant'] = [False for i in range(len(params['optim_conf'][3]['P_deferrable_nom']))]
         params['optim_conf'][8]['load_forecast_method'] = options['load_forecast_method']
@@ -133,6 +132,8 @@ def build_params(params, options, addon):
         params['optim_conf'][22]['battery_dynamic_min'] = options['battery_dynamic_min']
         params['optim_conf'][23]['weight_battery_discharge'] = options['weight_battery_discharge']
         params['optim_conf'][24]['weight_battery_charge'] = options['weight_battery_charge']
+        params['optim_conf'][25]['def_start_timestep'] = [i['start_timesteps_of_each_deferrable_load'] for i in options['list_start_timesteps_of_each_deferrable_load']]
+        params['optim_conf'][26]['def_end_timestep'] = [i['end_timesteps_of_each_deferrable_load'] for i in options['list_end_timesteps_of_each_deferrable_load']]
         # Updating variables in plant_conf
         params['plant_conf'][0]['P_grid_max'] = options['maximum_power_from_grid']
         params['plant_conf'][1]['module_model'] = [i['pv_module_model'] for i in options['list_pv_module_model']]
@@ -152,7 +153,7 @@ def build_params(params, options, addon):
     # The params dict
     params['params_secrets'] = params_secrets
     params['passed_data'] = {'pv_power_forecast':None,'load_power_forecast':None,'load_cost_forecast':None,'prod_price_forecast':None,
-                             'prediction_horizon':None,'soc_init':None,'soc_final':None,'def_total_hours':None,'def_end_timestep':None,'alpha':None,'beta':None}
+                             'prediction_horizon':None,'soc_init':None,'soc_final':None,'def_total_hours':None,'def_start_timestep':None,'def_end_timestep':None,'alpha':None,'beta':None}
     return params
 
 @app.route('/')

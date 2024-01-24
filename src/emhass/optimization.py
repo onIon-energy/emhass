@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 import pulp as plp
 from pulp import PULP_CBC_CMD, COIN_CMD, GLPK_CMD
-from math import ceil
+from math import ceil, max, min
 
 
 class optimization:
@@ -121,7 +121,7 @@ class optimization:
         :param def_total_hours: The functioning hours for this iteration for each deferrable load. \
             (For continuous deferrable loads: functioning hours at nominal power)
         :type def_total_hours: list
-        :param def_start_timestep: The timestep after which each deferrable load should operate.
+        :param def_start_timestep: The timestep as from which each deferrable load is allowed to operate.
         :type def_start_timestep: list
         :param def_end_timestep: The timestep before which each deferrable load should operate.
         :type def_end_timestep: list
@@ -226,7 +226,7 @@ class optimization:
             elif type_self_conso == 'maxmin':
                 objective = plp.lpSum(0.001*self.timeStep*unit_load_cost[i]*SC[i] for i in set_I)
             else:
-                self.logger.error("Not a valida option for type_self_conso parameter")
+                self.logger.error("Not a valid option for type_self_conso parameter")
         else:
             self.logger.error("The cost function specified type is not valid")
         # Add more terms to the objective function in the case of battery use
@@ -285,31 +285,26 @@ class optimization:
                     rhs = def_total_hours[k]*self.optim_conf['P_deferrable_nom'][k])
                 })
             # Ensure deferrable loads consume energy between def_start_timestep & def_end_timestep
-            if def_start_timestep[k] > def_end_timestep[k]:
-                def_start_timestep[k] = 0
-                def_end_timestep[k] = 0
-            def_start_timestep[k] = max(0, min(n, def_start_timestep[k]))
-            def_end_timestep[k] = max(0, min(n, def_end_timestep[k]))
-            if def_start_timestep[k] >= 0 and def_end_timestep[k] > 0:
-                # If the available timeframe (between def_start_timestep and def_end_timestep) is < number of timesteps to meet the hours to operate (def_total_hours), enlarge the timeframe.
-                if (def_end_timestep[k]-def_start_timestep[k]) < def_total_hours[k]/self.timeStep:
-                    #need to review this:
-                    def_end_timestep[k] = ceil(def_total_hours[k]/self.timeStep)
-                    self.logger.warning("Available timeframe for deferrable load %s is shorter than the specified number of hours to operate. Enlarging timeframe to def_total_hours.", k)
-            if def_start_timestep[k] > 0:                    
+            self.logger.debug("Deferrable load {}: Proposed optimization window: {} --> {}".format(k, def_start_timestep[k], def_end_timestep[k]))
+            def_start, def_end, warning = validate_def_timewindow(def_start_timestep[k], def_end_timestep[k], ceil(def_total_hours[k]/self.timeStep), n)
+            if warning is not None: 
+                self.logger.warning("Deferrable load {} : {}".format(k, warning))
+            self.logger.debug("Deferrable load {}: Validated optimization window: {} --> {}".format(k, def_start, def_end))
+            if def_start > 0:                    
                 constraints.update({"constraint_defload{}_start_timestep".format(k) :
                     plp.LpConstraint(
-                        e = plp.lpSum(P_deferrable[k][i]*self.timeStep for i in range(0, def_start_timestep[k])),
+                        e = plp.lpSum(P_deferrable[k][i]*self.timeStep for i in range(0, def_start)),
                         sense = plp.LpConstraintEQ,
                         rhs = 0)
                     })
-            if def_end_timestep[k] > 0:                    
+            if def_end > 0:                    
                 constraints.update({"constraint_defload{}_end_timestep".format(k) :
                     plp.LpConstraint(
-                        e = plp.lpSum(P_deferrable[k][i]*self.timeStep for i in range(def_end_timestep[k], n)),
+                        e = plp.lpSum(P_deferrable[k][i]*self.timeStep for i in range(def_end, n)),
                         sense = plp.LpConstraintEQ,
                         rhs = 0)
                     })
+            
             # Treat deferrable load as a semi-continuous variable
             if self.optim_conf['treat_def_as_semi_cont'][k]:
                 constraints.update({"constraint_pdef{}_semicont1_{}".format(k, i) : 
@@ -634,4 +629,40 @@ class optimization:
                                                  soc_final=soc_final, def_total_hours=def_total_hours,
                                                 def_end_timestep=def_end_timestep)
         return self.opt_res
-    
+
+    @staticmethod
+    def validate_def_timewindow(start: int, end: int, min_steps: int, window: int) -> Tuple[int,int, string]:
+        r"""
+        Helper function to validate (and if necessary: correct) the defined optimization window of a deferrable load.
+        
+        :param start: Start timestep of the optimization window of the deferrable load
+        :type start: int
+        :param end: End timestep of the optimization window of the deferrable load
+        :type end: int
+        :param min_steps: Minimal timesteps during which the load should operate (at nominal power)
+        :type min_steps: int
+        :param window: Total number of timesteps in the optimization window
+        :type window: int
+        :return: start_validated: Validated start timestep of the optimization window of the deferrable load
+        :rtype: int
+        :return: end_validated: Validated end timestep of the optimization window of the deferrable load
+        :rtype: int
+        :return: warning: Any warning information to be returned from the validation steps
+        :rtype: string
+
+        """
+        start_validated = 0
+        end_validated = 0
+        warning = None
+        # Verify that start <= end
+        if start <= end:
+            # start and end should be within the optimization timewindow [0, window]
+            start_validated = max(0, min(window, start))
+            end_validated = max(0, min(window, end))
+            if end_validated > 0:
+                # If the available timeframe is shorter than the number of timesteps needed to meet the hours to operate (def_total_hours), issue a warning.
+                if (end_validated-start_validated) < min_steps:
+                    warning = "Available timeframe is shorter than the specified number of hours to operate. Optimization will fail."
+        else:
+            warning = "Invalid timeframe for deferrable load (start timestep is not <= end timestep). Continuing optimization without timewindow constraint."
+        return start_validated, end_validated, warning

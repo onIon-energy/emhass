@@ -173,7 +173,12 @@ def treat_runtimeparams(runtimeparams: str, params: str, retrieve_hass_conf: dic
             else:
                 def_total_hours = runtimeparams['def_total_hours']
             params['passed_data']['def_total_hours'] = def_total_hours
-            if 'def_end_timestep' not in runtimeparams.keys():
+            if 'def_start_timestep' not in runtimeparams.keys():
+                def_start_timestep = optim_conf['def_start_timestep']
+            else:
+                def_start_timestep = runtimeparams['def_start_timestep']
+            params['passed_data']['def_start_timestep'] = def_start_timestep
+	        if 'def_end_timestep' not in runtimeparams.keys():
                 def_end_timestep = optim_conf['def_end_timestep']
             else:
                 def_end_timestep = runtimeparams['def_end_timestep']
@@ -317,6 +322,8 @@ def treat_runtimeparams(runtimeparams: str, params: str, retrieve_hass_conf: dic
             optim_conf['P_deferrable_nom'] = runtimeparams['P_deferrable_nom']
         if 'def_total_hours' in runtimeparams.keys():
             optim_conf['def_total_hours'] = runtimeparams['def_total_hours']
+        if 'def_start_timestep' in runtimeparams.keys():
+            optim_conf['def_start_timestep'] = runtimeparams['def_start_timestep']
         if 'def_end_timestep' in runtimeparams.keys():
             optim_conf['def_end_timestep'] = runtimeparams['def_end_timestep']
         if 'treat_def_as_semi_cont' in runtimeparams.keys():

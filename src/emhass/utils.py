@@ -178,7 +178,7 @@ def treat_runtimeparams(runtimeparams: str, params: str, retrieve_hass_conf: dic
             else:
                 def_start_timestep = runtimeparams['def_start_timestep']
             params['passed_data']['def_start_timestep'] = def_start_timestep
-	        if 'def_end_timestep' not in runtimeparams.keys():
+            if 'def_end_timestep' not in runtimeparams.keys():
                 def_end_timestep = optim_conf['def_end_timestep']
             else:
                 def_end_timestep = runtimeparams['def_end_timestep']
@@ -199,6 +199,7 @@ def treat_runtimeparams(runtimeparams: str, params: str, retrieve_hass_conf: dic
             params['passed_data']['soc_init'] = None
             params['passed_data']['soc_final'] = None
             params['passed_data']['def_total_hours'] = None
+            params['passed_data']['def_start_timestep'] = None
             params['passed_data']['def_end_timestep'] = None
             params['passed_data']['alpha'] = None
             params['passed_data']['beta'] = None

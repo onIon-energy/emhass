@@ -655,7 +655,7 @@ class optimization:
         end_validated = 0
         warning = None
         # Verify that start <= end
-        if start <= end:
+        if start <= end or start <= 0 or end <= 0:
             # start and end should be within the optimization timewindow [0, window]
             start_validated = max(0, min(window, start))
             end_validated = max(0, min(window, end))

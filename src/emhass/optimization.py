@@ -90,6 +90,7 @@ class optimization:
                              unit_load_cost: np.array, unit_prod_price: np.array,
                              soc_init: Optional[float] = None, soc_final: Optional[float] = None,
                              def_total_hours: Optional[list] = None, 
+                             def_start_timestep: Optional[list] = None,
                              def_end_timestep: Optional[list] = None,
                              debug: Optional[bool] = False) -> pd.DataFrame:
         r"""
@@ -120,7 +121,9 @@ class optimization:
         :param def_total_hours: The functioning hours for this iteration for each deferrable load. \
             (For continuous deferrable loads: functioning hours at nominal power)
         :type def_total_hours: list
-        :param def_end_timestep: The timestep before which each deferrable load should consume their energy.
+        :param def_start_timestep: The timestep after which each deferrable load should operate.
+        :type def_start_timestep: list
+        :param def_end_timestep: The timestep before which each deferrable load should operate.
         :type def_end_timestep: list
         :return: The input DataFrame with all the different results from the \
             optimization appended
@@ -141,6 +144,8 @@ class optimization:
                     soc_final = self.plant_conf['SOCtarget']
         if def_total_hours is None:
             def_total_hours = self.optim_conf['def_total_hours']
+        if def_start_timestep is None:
+            def_start_timestep = self.optim_conf['def_start_timestep']
         if def_end_timestep is None:
             def_end_timestep = self.optim_conf['def_end_timestep']
         type_self_conso = 'bigm' # maxmin
@@ -279,13 +284,26 @@ class optimization:
                     sense = plp.LpConstraintEQ,
                     rhs = def_total_hours[k]*self.optim_conf['P_deferrable_nom'][k])
                 })
-            # Ensure deferrable loads consume energy before def_end_timestep
-            if def_end_timestep[k] > 0:
-                # If the available timeframe (between now and def_end_timestep) is < number of timesteps to meet the hours to operate (def_total_hours), enlarge the timeframe.
-                if def_end_timestep[k] < def_total_hours[k]/self.timeStep:
+            # Ensure deferrable loads consume energy between def_start_timestep & def_end_timestep
+            if def_start_timestep[k] > def_end_timestep[k]:
+                def_start_timestep[k] = 0
+                def_end_timestep[k] = 0
+            def_start_timestep[k] = max(0, min(n, def_start_timestep[k]))
+            def_end_timestep[k] = max(0, min(n, def_end_timestep[k]))
+            if def_start_timestep[k] >= 0 and def_end_timestep[k] > 0:
+                # If the available timeframe (between def_start_timestep and def_end_timestep) is < number of timesteps to meet the hours to operate (def_total_hours), enlarge the timeframe.
+                if (def_end_timestep[k]-def_start_timestep[k]) < def_total_hours[k]/self.timeStep:
+                    #need to review this:
                     def_end_timestep[k] = ceil(def_total_hours[k]/self.timeStep)
                     self.logger.warning("Available timeframe for deferrable load %s is shorter than the specified number of hours to operate. Enlarging timeframe to def_total_hours.", k)
-                    
+            if def_start_timestep[k] > 0:                    
+                constraints.update({"constraint_defload{}_start_timestep".format(k) :
+                    plp.LpConstraint(
+                        e = plp.lpSum(P_deferrable[k][i]*self.timeStep for i in range(0, def_start_timestep[k])),
+                        sense = plp.LpConstraintEQ,
+                        rhs = 0)
+                    })
+            if def_end_timestep[k] > 0:                    
                 constraints.update({"constraint_defload{}_end_timestep".format(k) :
                     plp.LpConstraint(
                         e = plp.lpSum(P_deferrable[k][i]*self.timeStep for i in range(def_end_timestep[k], n)),

@@ -406,7 +406,7 @@ When applying this controller, the following `runtimeparams` should be defined:
 - `soc_final` for the final value of the battery SOC for the current iteration of the MPC. 
 
 - `def_total_hours` for the list of deferrable loads functioning hours. These values can decrease as the day advances to take into account receding horizon daily energy objectives for each deferrable load.
-- 
+
 - `def_start_timestep` for the timestep as from which each deferrable load is allowed to operate (if you don't want the deferrable load to use the whole optimization timewindow). If you specify a value of 0 (or negative), the deferrable load will be optimized as from the beginning of the complete prediction horizon window.
 
 - `def_end_timestep` for the timestep before which each deferrable load should operate (if you don't want the deferrable load to use the whole optimization timewindow). If you specify a value of 0 (or negative), the deferrable load optimization window will extend up to the end of the prediction horizon window. 

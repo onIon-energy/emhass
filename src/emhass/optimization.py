@@ -579,6 +579,7 @@ class optimization:
     def perform_naive_mpc_optim(self, df_input_data: pd.DataFrame, P_PV: pd.Series, P_load: pd.Series,
                                 prediction_horizon: int, soc_init: Optional[float] = None, soc_final: Optional[float] = None,
                                 def_total_hours: Optional[list] = None,
+                                def_start_timestep: Optional[list] = None,
                                 def_end_timestep: Optional[list] = None) -> pd.DataFrame:
         r"""
         Perform a naive approach to a Model Predictive Control (MPC). \
@@ -606,7 +607,9 @@ class optimization:
         :param def_total_hours: The functioning hours for this iteration for each deferrable load. \
             (For continuous deferrable loads: functioning hours at nominal power)
         :type def_total_hours: list
-        :param def_end_timestep: The timestep before which each deferrable load should consume their energy.
+        :param def_start_timestep: The timestep as from which each deferrable load is allowed to operate.
+        :type def_start_timestep: list
+        :param def_end_timestep: The timestep before which each deferrable load should operate.
         :type def_end_timestep: list
         :return: opt_res: A DataFrame containing the optimization results
         :rtype: pandas.DataFrame
@@ -627,7 +630,7 @@ class optimization:
         self.opt_res = self.perform_optimization(df_input_data, P_PV.values.ravel(), P_load.values.ravel(), 
                                                  unit_load_cost, unit_prod_price, soc_init=soc_init, 
                                                  soc_final=soc_final, def_total_hours=def_total_hours,
-                                                def_end_timestep=def_end_timestep)
+                                                 def_start_timestep=def_start_timestep, def_end_timestep=def_end_timestep)
         return self.opt_res
 
     @staticmethod
